@@ -1,0 +1,373 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
+        #transaction-history {
+            display: none;
+        }
+        #add-money-modal, #to-number-modal, #fraud-detect-modal, #register-modal, #account-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #add-money-modal .modal-content, #to-number-modal .modal-content, #fraud-detect-modal .modal-content, #register-modal .modal-content, #account-modal .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+        #success-message, #fraud-message {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: green;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        #fraud-message {
+            background: red;
+        }
+        #balance-display {
+            display: none;
+        }
+        #success-icon, #fraud-icon {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+        }
+        #success-icon {
+            color: green;
+        }
+        #fraud-icon {
+            color: red;
+        }
+        .relative {
+            position: relative;
+        }
+        .absolute {
+            position: absolute;
+        }
+        .right-2 {
+            right: 0.5rem;
+        }
+        .top-2 {
+            top: 0.5rem;
+        }
+    </style>
+    <script>
+        let balance = 0;
+        let phoneUsageCount = {}; // Object to track phone number usage
+
+        function toggleHistory() {
+            const historySection = document.getElementById('transaction-history');
+            historySection.style.display = historySection.style.display === 'none' || historySection.style.display === '' ? 'block' : 'none';
+        }
+
+        function showAddMoneyModal() {
+            document.getElementById('add-money-modal').style.display = 'flex';
+        }
+
+        function hideAddMoneyModal() {
+            document.getElementById('add-money-modal').style.display = 'none';
+        }
+
+        function showToNumberModal() {
+            document.getElementById('to-number-modal').style.display = 'flex';
+        }
+
+        function hideToNumberModal() {
+            document.getElementById('to-number-modal').style.display = 'none';
+        }
+
+        function showRegisterModal() {
+            document.getElementById('register-modal').style.display = 'flex';
+        }
+
+        function hideRegisterModal() {
+            document.getElementById('register-modal').style.display = 'none';
+        }
+
+        function showAccountModal() {
+            document.getElementById('account-modal').style.display = 'flex';
+        }
+
+        function hideAccountModal() {
+            document.getElementById('account-modal').style.display = 'none';
+        }
+
+        function showSuccessMessage(message) {
+            const successMessage = document.getElementById('success-message');
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            const successIcon = document.getElementById('success-icon');
+            successIcon.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+                successIcon.style.display = 'none';
+            }, 3000);
+        }
+
+        function showFraudMessage(message) {
+            const fraudMessage = document.getElementById('fraud-message');
+            fraudMessage.textContent = message;
+            fraudMessage.style.display = 'block';
+            const fraudIcon = document.getElementById('fraud-icon');
+            fraudIcon.style.display = 'block';
+            setTimeout(() => {
+                fraudMessage.style.display = 'none';
+                fraudIcon.style.display = 'none';
+            }, 3000);
+        }
+
+        function addMoney() {
+            const amount = document.getElementById('money-amount').value;
+            if (amount && !isNaN(amount)) {
+                if (parseFloat(amount) >= 40000) {
+                    showFraudMessage("Fraud detected! Amount exceeds or equals $40000.");
+                    return;
+                }
+                balance += parseFloat(amount);
+                updateBalanceDisplay();
+                const historyList = document.getElementById('history-list');
+                const newItem = document.createElement('li');
+                newItem.className = 'flex justify-between items-center py-2 border-b border-gray-200 ';
+                newItem.innerHTML = `<span class="text-gray-700">Added to Account</span><span class="text-green-500 font-medium">+ $${amount}</span>`;
+                historyList.appendChild(newItem);
+                showSuccessMessage(`$${amount} has been added to your account.`);
+                hideAddMoneyModal();
+            } else {
+                alert("Invalid amount entered.");
+            }
+        }
+
+        function showBalance() {
+            const balanceDisplay = document.getElementById('balance-display');
+            balanceDisplay.textContent = `Current Balance: $${balance.toFixed(2)}`;
+            balanceDisplay.style.display = 'block';
+            if (balance > 20000) {
+                showFraudMessage("Fraud detected! Balance exceeds $20000.");
+            }
+        }
+
+        function updateBalanceDisplay() {
+            const balanceDisplay = document.getElementById('balance-display');
+            balanceDisplay.textContent = `Current Balance: $${balance.toFixed(2)}`;
+            if (balance > 20000) {
+                showFraudMessage("Fraud detected! Balance exceeds $20000.");
+            }
+        }
+
+        function payToNumber() {
+            const number = document.getElementById('phone-number').value;
+            const amount = document.getElementById('pay-amount').value;
+            if (number && amount && !isNaN(amount)) {
+                if (parseFloat(amount) > 10000) {
+                    showFraudMessage("Fraud detected! Amount exceeds $10000.");
+                    return;
+                }
+                if (parseFloat(amount) > balance) {
+                    alert("Insufficient balance.");
+                    return;
+                }
+                if (phoneUsageCount[number]) {
+                    phoneUsageCount[number]++;
+                } else {
+                    phoneUsageCount[number] = 1;
+                }
+                if (phoneUsageCount[number] > 3) {
+                    showFraudMessage("Fraud detected! Phone number has been used more than 3 times.");
+                    return;
+                }
+                balance -= parseFloat(amount);
+                updateBalanceDisplay();
+                const historyList = document.getElementById('history-list');
+                const newItem = document.createElement('li');
+                newItem.className = 'flex justify-between items-center py-2 border-b border-gray-200 ';
+                newItem.innerHTML = `<span class="text-gray-700">Paid to ${number}</span><span class="text-red-500 font-medium">- $${amount}</span>`;
+                historyList.appendChild(newItem);
+                showSuccessMessage(`$${amount} has been paid to ${number}.`);
+                hideToNumberModal();
+            } else {
+                alert("Invalid number or amount entered.");
+            }
+        }
+
+        function checkAmount() {
+            const amount = document.getElementById('pay-amount').value;
+            if (parseFloat(amount) > 10000) {
+                showFraudMessage("Fraud detected! Amount exceeds $10000.");
+            }
+        }
+
+        function showApp() {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        function logout() {
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('login-page').classList.remove('hidden');
+        }
+
+        function sendOtp() {
+            const phoneNumber = document.getElementById('register-phone-number').value;
+            if (phoneNumber) {
+                alert(`OTP sent to ${phoneNumber}`);
+            } else {
+                alert("Please enter a valid phone number.");
+            }
+        }
+
+        function validateOtp() {
+            const otp = document.getElementById('register-otp').value;
+            const otpIcon = document.getElementById('otp-valid-icon');
+            if (otp.length === 6) { // Assuming OTP is 6 digits
+                otpIcon.style.display = 'block';
+            } else {
+                otpIcon.style.display = 'none';
+            }
+        }
+
+        function registerUser() {
+            // Assuming registration is successful
+            showSuccessMessage("Registration successful!");
+            setTimeout(() => {
+                hideRegisterModal();
+                document.getElementById('login-page').classList.remove('hidden');
+                document.getElementById('app').classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <div id="login-page" class="flex justify-center items-center h-screen">
+            <div class="bg-white shadow-md rounded-lg p-8">
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">Welcome to PAY</h1>
+                <div class="flex justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onclick="showApp()">Login</button>
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onclick="showRegisterModal()">Register</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="app" class="hidden">
+            <header class="bg-white shadow-md rounded-lg p-4 mb-6 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">PAY</h1>
+                <div>
+                    <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mr-2" onclick="showAccountModal()">Account</button>
+                    <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <section class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-white shadow-md rounded-lg p-4 flex items-center justify-center flex-col">
+                    <i class="fas fa-qrcode text-4xl text-blue-500 mb-2"></i>
+                    <span class="text-lg font-medium text-gray-700">Scanner</span>
+                </div>
+                <div class="bg-white shadow-md rounded-lg p-4 flex items-center justify-center flex-col cursor-pointer" onclick="showBalance()">
+                    <i class="fas fa-wallet text-4xl text-green-500 mb-2"></i>
+                    <span class="text-lg font-medium text-gray-700">Check Balance</span>
+                </div>
+                <div class="bg-white shadow-md rounded-lg p-4 flex items-center justify-center flex-col cursor-pointer" onclick="showToNumberModal()">
+                    <i class="fas fa-phone-alt text-4xl text-purple-500 mb-2"></i>
+                    <span class="text-lg font-medium text-gray-700">To Number</span>
+                </div>
+                <div class="bg-white shadow-md rounded-lg p-4 flex items-center justify-center flex-col cursor-pointer" onclick="toggleHistory()">
+                    <i class="fas fa-history text-4xl text-red-500 mb-2"></i>
+                    <span class=" text-lg font-medium text-gray-700">History</span>
+                </div>
+                <div class="bg-white shadow-md rounded-lg p-4 flex items-center justify-center flex-col cursor-pointer" onclick="showAddMoneyModal()">
+                    <i class="fas fa-plus-circle text-4xl text-yellow-500 mb-2"></i>
+                    <span class="text-lg font-medium text-gray-700">Add Money</span>
+                </div>
+            </section>
+
+            <section id="transaction-history" class="bg-white shadow-md rounded-lg p-4 mb-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Transaction History</h2>
+                <ul id="history-list" class="list-none mb-0"></ul>
+            </section>
+
+            <section id="add-money-modal" class="flex justify-center items-center">
+                <div class="modal-content">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">Add Money</h2>
+                    <input id="money-amount" type="number" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter amount">
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-2" onclick="addMoney()">Add</button>
+                    <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" onclick="hideAddMoneyModal()">Cancel</button>
+                </div>
+            </section>
+
+            <section id="to-number-modal" class="flex justify-center items-center">
+                <div class="modal-content">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">Pay to Number</h2>
+                    <input id="phone-number" type="tel" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter phone number">
+                    <input id="pay-amount" type="number" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter amount">
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-2" onclick="payToNumber()">Pay</button>
+                    <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" onclick="hideToNumberModal()">Cancel</button>
+                </div>
+            </section>
+
+            <section id="fraud-detect-modal" class="flex justify-center items-center">
+                <div class="modal-content">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">Fraud Detection</h2>
+                    <p id="fraud-message" class="text-lg text-red-500 font-bold mb-2"></p>
+                </div>
+            </section>
+
+            <section id="balance-display" class="bg-white shadow-md rounded-lg p-4 mb-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Current Balance</h2>
+                <p id="balance-text" class="text-lg text-gray-700 font-bold mb-2"></p>
+            </section>
+
+            <i id="success-icon" class="fas fa-check-circle text-green-500"></i>
+            <i id="fraud-icon" class="fas fa-exclamation-triangle text-red-500"></i>
+            <p id="success-message" class="text-lg text-green-500 font-bold mb-2"></p>
+            <p id="fraud-message" class="text-lg text-red-500 font-bold mb-2"></p>
+        </div>
+
+        <div id="register-modal" class="flex justify-center items-center">
+            <div class="modal-content">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Register</h2>
+                <input id="register-phone-number" type="tel" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter mobile number">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4" onclick="sendOtp()">Send OTP</button>
+                <div class="relative">
+                    <input id="register-otp" type="text" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter OTP sent to your number" oninput="validateOtp()">
+                    <i id="otp-valid-icon" class="fas fa-check-circle text-green-500 absolute right-2 top-2" style="display: none;"></i>
+                </div>
+                <input id="register-name" type="text" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter your name">
+                <input id="register-pin" type="password" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Enter 4-digit PIN">
+                <input id="register-confirm-pin" type="password" class="w-full p-2 pl-10 text-sm text-gray-700 mb-4" placeholder="Re-enter 4-digit PIN">
+                <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-2" onclick="registerUser()">Create</button>
+                <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" onclick="hideRegisterModal()">Back</button>
+            </div>
+        </div>
+
+        <div id="account-modal" class="flex justify-center items-center">
+            <div class="modal-content">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Account Details</h2>
+                <p class="text-sm text-gray-700 mb-2"><strong>Pay User Name:</strong> John Doe</p>
+                <p class="text-sm text-gray-700 mb-2"><strong>Linked Account:</strong> 1234567890</p>
+                <p class="text-sm text-gray-700 mb-2"><strong>UPI ID:</strong> johndoe@upi</p>
+                <p class="text-sm text-gray-700 mb-4"><strong>Mobile Number:</strong> +1234567890</p>
+                <button class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" onclick="hideAccountModal()">Close</button>
+            </
